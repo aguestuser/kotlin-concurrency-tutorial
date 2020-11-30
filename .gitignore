@@ -1,0 +1,52 @@
+# Generated files
+*/build/*.apk
+*.class
+*.log
+*.pyc
+build/
+captures/
+gen/
+crashlytics-build.properties
+*.pyc
+.cache/
+reports/
+
+# Gradle cached files and artifacts
+.gradle/
+
+# Local configuration file (contains the local path to the Android SDK)
+local.properties
+# Custom properties. By default we ignore changes; see file for instructions if you want to change
+# the default version
+wave-local.properties
+# local path to Android Studio JRE
+gradle/wrapper/java_home
+
+# Android Studio files (mostly local configuration)
+.idea/*
+# We do want to share these subdirectories, though.
+!.idea/copyright
+!.idea/inspectionProfiles
+!.idea/runConfigurations
+
+# User-specific configuration files
+*.iml
+.classpath
+.settings
+.project
+
+
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
