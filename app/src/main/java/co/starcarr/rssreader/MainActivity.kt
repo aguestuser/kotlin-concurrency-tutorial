@@ -3,7 +3,13 @@ package co.starcarr.rssreader
 import android.annotation.SuppressLint
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.widget.TextView
+import android.view.View
+import android.widget.ProgressBar
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import co.starcarr.rssreader.adapter.ArticleAdapter
+import co.starcarr.rssreader.model.Article
+import co.starcarr.rssreader.model.Feed
 import kotlinx.coroutines.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers.IO
@@ -19,61 +25,85 @@ typealias GS = GlobalScope
 @SuppressLint("SetTextI18n")
 class MainActivity : AppCompatActivity() {
 
+    private val viewAdapter: ArticleAdapter by lazy { ArticleAdapter() }
+    private val viewManager: RecyclerView.LayoutManager by lazy  { LinearLayoutManager(this) }
+
     private val factory = DocumentBuilderFactory.newInstance()
     private val feeds = listOf(
-        "https://www.npr.org/rss/rss.php?id=1001",
-        "http://rss.cnn.com/rss/cnn_topstories.rss",
-        "http://feeds.foxnews.com/foxnews/politics?format=xml",
-        "htt:myNewsFeed",
+        Feed("npr", "https://www.npr.org/rss/rss.php?id=1001"),
+        Feed("cnn", "http://rss.cnn.com/rss/cnn_topstories.rss"),
+        Feed("fox", "http://feeds.foxnews.com/foxnews/politics?format=xml"),
+        Feed("inv", "htt:myNewsFeed"),
     )
 
     override fun onCreate(savedInstanceState: Bundle?){
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        asyncLoadNews()
+
+        findViewById<RecyclerView>(R.id.articles).apply {
+            layoutManager = viewManager
+            adapter = viewAdapter
+        }
+
+        loadNewsAsync()
     }
 
 
-    private fun asyncLoadNews(dispatcher: CoroutineDispatcher = IO) = GS.launch(dispatcher) {
+    private fun loadNewsAsync(dispatcher: CoroutineDispatcher = IO) = GS.launch(dispatcher) {
         // fetch data
         val requests = feeds
-            .mapTo(mutableListOf<Deferred<List<String>>>()) { fetchHeadlinesAsync(it, dispatcher) }
+            .mapTo(mutableListOf()) { fetchArticlesAsync(it, dispatcher) }
             .onEach { it.join() }
 
         // process data
-        val headlines = requests
+        val articles = requests
             .filter { !it.isCancelled }
             .flatMap { it.getCompleted() }
 
-        val (numFailed, numFetched) = requests
-            .filter { it.isCancelled }
-            .size
-            .let { (it to requests.size - it) }
-
         // display data
-        val newsCount = findViewById<TextView>(R.id.newsCount)
-        val warnings = findViewById<TextView>(R.id.warnings)
         launch(Dispatchers.Main) {
-            newsCount.text = "Found ${headlines.size} News in $numFetched feed(s)"
-            if (numFailed > 0) {
-                warnings.text = "Failed to fetch $numFailed feed(s)"
-            }
+            findViewById<ProgressBar>(R.id.progressBar).visibility = View.GONE
+            viewAdapter.add(articles)
         }
     }
 
-    private fun fetchHeadlinesAsync(feed: String, dispatcher: CoroutineDispatcher) = GS.async(dispatcher) {
+
+
+    private fun fetchArticlesAsync(
+        feed: Feed,
+        dispatcher: CoroutineDispatcher
+    ): Deferred<List<Article>> = GS.async(dispatcher) {
+
+        delay(1000)
+
         val builder = factory.newDocumentBuilder()
-        val xml = builder.parse(feed)
+        val xml = builder.parse(feed.url)
         val news = xml.getElementsByTagName("channel").item(0)
-        (0 until news.childNodes.length)
-            .map { news.childNodes.item(it) }
+
+        news.getElements()
+            .map {
+                Article(
+                    feed = feed.name,
+                    title = it.getTextContentByTag("title"),
+                    summary = sanitize(it.getTextContentByTag("description")),
+                )
+            }
+    }
+
+    private fun Node.getElements(): List<Element> =
+        (0 until this.childNodes.length)
+            .map { this.childNodes.item(it) }
             .filter { it.nodeType == Node.ELEMENT_NODE }
             .map { it as Element }
             .filter { it.tagName == "item" }
-            .map {
-                it.getElementsByTagName("title").item(0).textContent
-            }
-    }
+
+    private fun Element.getTextContentByTag(tagName: String): String =
+        this.getElementsByTagName(tagName).item(0).textContent
+
+    private fun sanitize(summary: String) =
+        if (!summary.startsWith("div") && summary.contains("<div"))
+            summary.substring(0, summary.indexOf(("<div")))
+        else summary
 }
 
 
