@@ -5,13 +5,22 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import co.starcarr.rssreader.GS
 import co.starcarr.rssreader.R
 import co.starcarr.rssreader.model.Article
+import kotlinx.coroutines.launch
 
 
-class ArticleAdapter: RecyclerView.Adapter<ArticleAdapter.ViewHolder>() {
+interface ArticleLoader {
+    suspend fun loadMore()
+}
+
+class ArticleAdapter(
+    private val loader: ArticleLoader
+): RecyclerView.Adapter<ArticleAdapter.ViewHolder>() {
 
     private val articles: MutableList<Article> = mutableListOf()
+    private var loading = false
 
     class ViewHolder(
         private val layout: LinearLayout,
@@ -34,6 +43,15 @@ class ArticleAdapter: RecyclerView.Adapter<ArticleAdapter.ViewHolder>() {
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val article = articles[position]
+
+        // fetch more articles as user scrolls to end of list
+        if (!loading && position >= articles.size -2) {
+            loading = true
+            GS.launch {
+                loader.loadMore()
+                loading = false
+            }
+        }
 
         holder.feed.text = article.feed
         holder.title.text = article.title
