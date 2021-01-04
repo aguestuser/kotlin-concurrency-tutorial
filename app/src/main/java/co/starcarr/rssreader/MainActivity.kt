@@ -9,21 +9,16 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import co.starcarr.rssreader.adapter.ArticleAdapter
 import co.starcarr.rssreader.adapter.ArticleLoader
+import co.starcarr.rssreader.types.GS
 import co.starcarr.rssreader.producer.ArticleProducer
 import kotlinx.coroutines.*
-import javax.xml.parsers.DocumentBuilderFactory
 
-
-typealias GS = GlobalScope
 
 @ExperimentalCoroutinesApi
 @SuppressLint("SetTextI18n")
 class MainActivity : AppCompatActivity(), ArticleLoader {
-
-    private val viewAdapter: ArticleAdapter by lazy { ArticleAdapter(this) }
+    private val viewAdapter: ArticleAdapter by lazy { ArticleAdapter() }
     private val viewManager: RecyclerView.LayoutManager by lazy  { LinearLayoutManager(this) }
-
-    private val factory = DocumentBuilderFactory.newInstance()
 
     override fun onCreate(savedInstanceState: Bundle?){
         super.onCreate(savedInstanceState)
