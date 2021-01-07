@@ -8,19 +8,21 @@ import co.starcarr.rssreader.logic.Dom.getTextContentByTag
 import co.starcarr.rssreader.logic.Dom.sanitize
 import co.starcarr.rssreader.model.Article
 import co.starcarr.rssreader.model.Feed
+import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newFixedThreadPoolContext
 import java.util.concurrent.Executors
 import javax.xml.parsers.DocumentBuilderFactory
 
+@ObsoleteCoroutinesApi
 class Searcher {
     private val feeds = Config.FEEDS
-    private val dispatcher = Executors.newFixedThreadPool(feeds.size).asCoroutineDispatcher()
+    private val dispatcher = newFixedThreadPoolContext(feeds.size, "IO_search")
     private val factory = DocumentBuilderFactory.newInstance()
-
 
     fun search(query: String): ReceiveChannel<Article>  =
         Channel<Article>(150).also { channel ->
@@ -32,8 +34,6 @@ class Searcher {
 
         }
 
-
-
     private suspend fun searchOne(feed: Feed, channel: SendChannel<Article>, query: String) =
         Dom.parseElementTree(factory, feed.url)
             .getLeafElements()
@@ -42,6 +42,7 @@ class Searcher {
                 val summary = it.getTextContentByTag("description").sanitize()
                 if(title.contains(query) || summary.contains(query)) {
                     channel.send(Article(feed.name, title, summary))
+                    ResultsCounter.increment()
                 }
             }
 }
